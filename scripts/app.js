@@ -1,5 +1,25 @@
 var app = angular.module('meanNews', ['ui.router']);
 
+app.config([
+'$stateProvider',
+'$urlRouterProvider',
+function($stateProvider, $urlRouterProvider) {
+
+  $stateProvider
+    .state('home', {
+      url: '/home',
+      templateUrl: '/home.html',
+      controller: 'MainController'
+    })
+    .state('posts', {
+    	url: '/posts/{id}',
+    	templateUrl: '/posts.html',
+    	controller: 'PostsController'
+    });
+
+  $urlRouterProvider.otherwise('home');
+}]);
+
 app.factory('posts', [function() {
 	var o = {
 		posts: []
@@ -7,7 +27,10 @@ app.factory('posts', [function() {
 	return o;
 }]);
 
-app.controller('MainController', ['$scope', 'posts', function($scope, posts) {
+app.controller('MainController', ['$scope',
+	'posts',
+	function($scope, posts) {
+
 	$scope.test = 'Hello World!';
 
 	$scope.posts = posts.posts;
@@ -24,7 +47,11 @@ app.controller('MainController', ['$scope', 'posts', function($scope, posts) {
 		$scope.posts.push({
 			title: $scope.title,
 			link: $scope.link,
-			upvotes: 0
+			upvotes: 0,
+			comments: [
+				{author: 'Joe', body: 'Cool post!', upvotes: 0},
+				{author: 'Bob', body: 'Great idea but everything is wrong!', upvotes: 0}
+			]
 		});
 		$scope.title = '';
 		$scope.link = '';
@@ -34,4 +61,21 @@ app.controller('MainController', ['$scope', 'posts', function($scope, posts) {
 		post.upvotes++;
 	};
 
+}]);
+
+app.controller('PostsController', [
+	'$scope',
+	'$stateParams',
+	'posts',
+	function($scope, $stateParams, posts) {
+		$scope.post = posts.posts[$stateParams.id];
+		$scope.addComment = function(){
+			if($scope.body === '') { return; }
+			$scope.post.comments.push({
+				body: $scope.body,
+		    	author: 'user',
+		    	upvotes: 0
+		  	});
+		  	$scope.body = '';
+		};
 }]);
