@@ -81,6 +81,65 @@ app.factory('posts', ['$http', function($http) {
 	return o;
 }]);
 
+// auth service
+app.factory('auth'), ['$http', '$window', function($http, $window) {
+	var auth = {};
+
+	// setting token
+	auth.saveToken = function(token) {
+		$window.localStorage['mean-news-token'] = token;
+	};
+
+	// get token
+	auth.getToken = function() {
+		return $window.localStorage['mean-news-token'];
+	};
+
+	// returns a boolean value for if the user is logged in
+	auth.isLoggedIn = function() {
+		var token = auth.getToken();
+
+		if (token) {
+			var payload = JSON.parse($window.atob(token.split('.')[1]));
+
+			return payload.exp > Date.now() / 1000;
+		} else {
+			return false;
+		}
+	};
+
+	// returns the username of the user who's logged in
+	auth.currentUser = function() {
+		if (auth.isLoggedIn()) {
+			var token = auth.getToken();
+			var payload = JSON.parse($window.atob(token.split('.')[1]));
+
+			return payload.username;
+		}
+	};
+
+	// posts user to /register route and saves token returned
+	auth.register = function(user) {
+		return $http.post('/register', user).success(function(data) {
+			auth.saveToken(data.token);
+		});
+	};
+
+	// posts a user to /login route and saves token returned
+	auth.logIn = function(user) {
+		return $http.post('/login', user).success(function(data) {
+			auth.saveToken(data.token);
+		});
+	};
+
+	// removes the user's token from localStorage, logging the user out
+	auth.logOut = function() {
+		$window.localStorage.removeItem('mean-news-token');
+	};
+
+	return auth;
+}];
+
 app.controller('MainController', ['$scope',
 	'posts',
 	function($scope, posts) {
@@ -125,7 +184,7 @@ app.controller('PostsController', [
 	    $scope.incrementUpvotes = function (comment) {
 	        comment.upvotes += 1;
 	    };
-    
+
 		$scope.incrementUpvotes = function(comment) {
 			posts.upvoteComment(post, comment);
 		};
