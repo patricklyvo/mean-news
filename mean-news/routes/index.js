@@ -12,7 +12,7 @@ var mongoose = require('mongoose');
 var Post = mongoose.model('Post');
 var Comment = mongoose.model('Comment');
 
-// --- routes ---
+// --- REST Routes ---
 //GET /posts - return a list of posts and associated metadata
 router.get('/posts', function(req, res, next) {
 	Post.find(function(err, posts) {
@@ -95,7 +95,7 @@ router.put('/posts/:post/upvote', function(req, res, next) {
 });
 
 // PUT /posts/:id/comments/:id/upvote - upvote a comment
-router.put('/posts/:post/comments/:comment/upvote', funtion(req, res, next) {
+router.put('/posts/:post/comments/:comment/upvote', function(req, res, next) {
 	req.post.upvote(function(err, comment) {
 		if (err) { return next(err); }
 
