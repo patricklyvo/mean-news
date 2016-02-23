@@ -25,13 +25,33 @@ function($stateProvider, $urlRouterProvider) {
     			return posts.get($stateParams.id);
     		}]
     	}
+    })
+    .state('login', {
+    	url: '/login',
+    	templateUrl: '/login.html',
+    	controller: 'AuthController',
+    	onEnter: ['$state', 'auth', function($state, auth) {
+    		if (auth.isLoggedIn()) {
+    			$state.go('home');
+    		}
+    	}]
+    })
+    .state('register', {
+    	url: '/register',
+    	templateUrl: '/register.html',
+    	controller: 'AuthController',
+    	onEnter: ['$state', 'auth', function($state, auth) {
+    		if (auth.isLoggedIn()) {
+    			$state.go('home');
+    		}
+    	}]
     });
 
   $urlRouterProvider.otherwise('home');
 }]);
 
 // posts service
-app.factory('posts', ['$http', function($http) {
+app.factory('posts', ['$http', 'auth', function($http, auth) {
 	var o = {
 		posts: []
 	};
@@ -45,17 +65,20 @@ app.factory('posts', ['$http', function($http) {
 
 	// creating new posts
 	o.create = function(post) {
-		return $http.post('/posts', post).success(function(data) {
+		return $http.post('/posts', post, {
+			headers: {Authorization: 'Bearer ' + auth.getToken()}
+		}).success(function(data) {
 			o.posts.push(data);
 		});
 	};
 
 	// upvoting posts
 	o.upvote = function(post) {
-		return $http.put('/posts/' + post._id + '/upvote')
-			.success(function(data) {
+		return $http.put('/posts/' + post._id + '/upvote', null, {
+			headers: {Authorization: 'Bearer '+ auth.getToken()}
+		}).success(function(data) {
 				post.upvotes += 1;
-			});
+		});
 	};
 
 	// retrieve a single post from server
@@ -67,22 +90,25 @@ app.factory('posts', ['$http', function($http) {
 
 	// add comments
 	o.addComment = function(id, comment) {
-		return $http.post('/posts/' + id + '/comments', comment);
+		return $http.post('/posts/' + id + '/comments', comment, {
+			headers: {Authorization: 'Bearer '+ auth.getToken()}
+		});
 	};
 
 	// upvote comments
 	o.upvoteComment = function(post, comment) {
-		return $http.put('/posts/' + post._id + '/comments/' + comment._id + '/upvote')
-			.success(function(data) {
+		return $http.put('/posts/' + post._id + '/comments/' + comment._id + '/upvote', null, {
+			headers: {Authorization: 'Bearer '+ auth.getToken()}
+		}).success(function(data) {
 				comment.upvotes += 1;
-			});
+		});
 	};
 
 	return o;
 }]);
 
 // auth service
-app.factory('auth'), ['$http', '$window', function($http, $window) {
+app.factory('auth', ['$http', '$window', function($http, $window) {
 	var auth = {};
 
 	// setting token
@@ -138,11 +164,13 @@ app.factory('auth'), ['$http', '$window', function($http, $window) {
 	};
 
 	return auth;
-}];
+}]);
 
-app.controller('MainController', ['$scope',
+app.controller('MainController', [
+	'$scope',
 	'posts',
-	function($scope, posts) {
+	'auth',
+	function($scope, posts, auth) {
 
 	$scope.posts = posts.posts;
 
@@ -161,13 +189,16 @@ app.controller('MainController', ['$scope',
 		posts.upvote(post);
 	};
 
+	// check if user is logged in
+	$scope.isLoggedIn = auth.isLoggedIn;
 }]);
 
 app.controller('PostsController', [
 	'$scope',
 	'posts',
 	'post',
-	function($scope, posts, post) {
+	'auth',
+	function($scope, posts, post, auth) {
 		$scope.post = post;
 
 		$scope.addComment = function() {
@@ -188,4 +219,41 @@ app.controller('PostsController', [
 		$scope.incrementUpvotes = function(comment) {
 			posts.upvoteComment(post, comment);
 		};
+
+		// check if user is logged in
+		$scope.isLoggedIn = auth.isLoggedIn;
 }]);
+
+app.controller('AuthController', [
+	'$scope',
+	'$state',
+	'auth',
+	function($scope, $state, auth) {
+		$scope.user = {};
+
+		$scope.register = function() {
+			auth.register($scope.user).error(function(error) {
+				$scope.error = error;
+			}).then(function() {
+				$state.go('home');
+			});
+		};
+
+		$scope.logIn = function() {
+			auth.logIn($scope.user).error(function(error) {
+				$scope.error = error;
+			}).then(function() {
+				$state.go('home');
+			});
+		};
+}]);
+
+app.controller('NavController', [
+	'$scope',
+	'auth',
+	function($scope, auth) {
+		$scope.isLoggedIn = auth.isLoggedIn;
+		$scope.currentUser = auth.currentUser;
+		$scope.logOut = auth.logOut;
+	}
+]);
